@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>广告日报收集与导出</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --header-bg: #fcd9b3;
+      --subheader-bg: #fdeed9;
+      --label-bg: #c9e4ff;
+      --divider-bg: #e6eef7;
+      --metric-bg: #d5f4fa;
+      --table-border: #c7c7c7;
+      --row-alt: #f8fbff;
+      --accent: #f18f01;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Microsoft YaHei", Arial, sans-serif;
+      margin: 16px;
+      background: #f7f7f9;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      color: #444;
+    }
+
+    section {
+      background: #fff;
+      border: 1px solid var(--table-border);
+      padding: 16px;
+      margin-bottom: 18px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--header-bg);
+      border: 1px solid var(--table-border);
+      padding: 10px;
+      margin: -8px -8px 12px -8px;
+      font-weight: 700;
+      color: #5c3d1a;
+      letter-spacing: 1px;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th, td {
+      border: 1px solid var(--table-border);
+      padding: 8px;
+      text-align: center;
+      font-size: 14px;
+      word-break: break-all;
+    }
+
+    thead th {
+      background: var(--subheader-bg);
+      color: #444;
+      font-weight: 700;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: var(--row-alt);
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #d3d3d3;
+      border-radius: 4px;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    .tag-label {
+      background: var(--label-bg);
+      font-weight: 700;
+      color: #234;
+    }
+
+    .divider-cell {
+      background: var(--divider-bg);
+    }
+
+    .metric-label {
+      background: var(--metric-bg);
+      font-weight: 700;
+    }
+
+    .actions {
+      margin: 8px 0;
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+      transition: transform 0.05s ease, box-shadow 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    }
+
+    .danger-btn {
+      background: #d9534f;
+    }
+
+    .table-note {
+      margin-top: 6px;
+      color: #666;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>广告日报收集</h1>
+
+  <section id="ad-structure">
+    <div class="section-title">广告结构</div>
+    <table class="structure-table">
+      <thead>
+        <tr>
+          <th colspan="4">本品</th>
+          <th colspan="4">竞品</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="tag-label">本品</td>
+          <td><input type="text" id="product-start-date" placeholder="开始日期 如：11.21" /></td>
+          <td><input type="text" id="product-end-date" placeholder="结束日期 如：11.26" /></td>
+          <td class="divider-cell"></td>
+          <td class="tag-label">竞品名称</td>
+          <td><input type="text" id="competitor-name" placeholder="填写竞品名称" /></td>
+          <td><input type="text" id="competitor-start-date" placeholder="开始日期" /></td>
+          <td><input type="text" id="competitor-end-date" placeholder="结束日期" /></td>
+        </tr>
+        <tr>
+          <td class="metric-label">广告位流量占比</td>
+          <td><input type="number" id="product-sp" placeholder="SP %" /></td>
+          <td><input type="number" id="product-sb" placeholder="SB %" /></td>
+          <td><input type="number" id="product-sbv" placeholder="SBV %" /></td>
+          <td class="metric-label">广告位流量占比</td>
+          <td><input type="number" id="competitor-sp" placeholder="SP %" /></td>
+          <td><input type="number" id="competitor-sb" placeholder="SB %" /></td>
+          <td><input type="number" id="competitor-sbv" placeholder="SBV %" /></td>
+        </tr>
+        <tr>
+          <td class="metric-label">词分布占比</td>
+          <td><input type="number" id="product-head" placeholder="头部 %" /></td>
+          <td><input type="number" id="product-middle" placeholder="腰部 %" /></td>
+          <td><input type="number" id="product-tail" placeholder="长尾 %" /></td>
+          <td class="metric-label">词分布占比</td>
+          <td><input type="number" id="competitor-head" placeholder="头部 %" /></td>
+          <td><input type="number" id="competitor-middle" placeholder="腰部 %" /></td>
+          <td><input type="number" id="competitor-tail" placeholder="长尾 %" /></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="table-note">上表按照示例色块排版，便于与最终导出的 Excel 对齐。</div>
+  </section>
+
+  <section id="core-words-section">
+    <div class="section-title">核心出单词</div>
+    <div class="actions">
+      <button type="button" id="add-core-row">新增一行</button>
+    </div>
+    <table id="core-words-table">
+      <thead>
+        <tr>
+          <th class="tag-label">出单词</th>
+          <th class="tag-label">自然位</th>
+          <th class="metric-label">当前点击率</th>
+          <th class="metric-label">当前转化率</th>
+          <th class="metric-label">日期</th>
+          <th class="metric-label">备注</th>
+          <th class="divider-cell">操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section id="missing-words-section">
+    <div class="section-title">与竞品对比缺失词</div>
+    <div class="actions">
+      <button type="button" id="add-missing-row">新增一行</button>
+    </div>
+    <table id="missing-words-table">
+      <thead>
+        <tr>
+          <th class="tag-label">关键词</th>
+          <th class="metric-label">执行动作</th>
+          <th class="metric-label">执行日期</th>
+          <th class="metric-label">难度</th>
+          <th class="metric-label">趋势</th>
+          <th class="metric-label">备注</th>
+          <th class="divider-cell">操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section id="new-words-section">
+    <div class="section-title">新打造词情况</div>
+    <div class="actions">
+      <button type="button" id="add-new-row">新增一行</button>
+    </div>
+    <table id="new-words-table">
+      <thead>
+        <tr>
+          <th class="tag-label">关键词</th>
+          <th class="metric-label">点击率</th>
+          <th class="metric-label">转换率</th>
+          <th class="tag-label">自然位</th>
+          <th class="metric-label">备注</th>
+          <th class="divider-cell">操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section>
+    <button type="button" id="export-btn">生成日报 Excel</button>
+  </section>
+
+  <script>
+    function createCellInput(placeholder = "") {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = placeholder;
+      return input;
+    }
+
+    function addTableRow(tbody, placeholders) {
+      const tr = document.createElement("tr");
+      placeholders.forEach((placeholder) => {
+        const td = document.createElement("td");
+        const isNumber = placeholder.includes("率") || placeholder.includes("位") || placeholder.includes("日期") || placeholder.includes("度");
+        const input = document.createElement("input");
+        input.type = isNumber ? "text" : "text";
+        input.placeholder = placeholder;
+        td.appendChild(input);
+        tr.appendChild(td);
+      });
+      const actionTd = document.createElement("td");
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "删除";
+      deleteBtn.type = "button";
+      deleteBtn.classList.add("danger-btn");
+      deleteBtn.addEventListener("click", () => tbody.removeChild(tr));
+      actionTd.appendChild(deleteBtn);
+      tr.appendChild(actionTd);
+      tbody.appendChild(tr);
+    }
+
+    function getTableData(tableId) {
+      const rows = [];
+      document.querySelectorAll(`#${tableId} tbody tr`).forEach((tr) => {
+        const values = Array.from(tr.querySelectorAll("td input")).map((input) => input.value.trim());
+        rows.push(values);
+      });
+      return rows;
+    }
+
+    document.getElementById("add-core-row").addEventListener("click", () => {
+      const tbody = document.querySelector("#core-words-table tbody");
+      addTableRow(tbody, ["出单词", "自然位", "当前点击率", "当前转化率", "日期", "备注"]);
+    });
+
+    document.getElementById("add-missing-row").addEventListener("click", () => {
+      const tbody = document.querySelector("#missing-words-table tbody");
+      addTableRow(tbody, ["关键词", "执行动作", "执行日期", "难度", "趋势", "备注"]);
+    });
+
+    document.getElementById("add-new-row").addEventListener("click", () => {
+      const tbody = document.querySelector("#new-words-table tbody");
+      addTableRow(tbody, ["关键词", "点击率", "转换率", "自然位", "备注"]);
+    });
+
+    // 初始化每个表格一行
+    document.getElementById("add-core-row").click();
+    document.getElementById("add-missing-row").click();
+    document.getElementById("add-new-row").click();
+
+    function buildSheetData() {
+      const data = [];
+      data.push(["广告结构", "", "", "", "竞品", "", "", ""]);
+      data.push([
+        "本品",
+        document.getElementById("product-start-date").value,
+        document.getElementById("product-end-date").value,
+        "",
+        "竞品名称",
+        document.getElementById("competitor-name").value,
+        document.getElementById("competitor-start-date").value,
+        document.getElementById("competitor-end-date").value,
+      ]);
+      data.push([
+        "广告位流量占比",
+        `SP: ${document.getElementById("product-sp").value}`,
+        `SB: ${document.getElementById("product-sb").value}`,
+        `SBV: ${document.getElementById("product-sbv").value}`,
+        "广告位流量占比",
+        `SP: ${document.getElementById("competitor-sp").value}`,
+        `SB: ${document.getElementById("competitor-sb").value}`,
+        `SBV: ${document.getElementById("competitor-sbv").value}`,
+      ]);
+      data.push([
+        "词分布占比",
+        `头部: ${document.getElementById("product-head").value}`,
+        `腰部: ${document.getElementById("product-middle").value}`,
+        `长尾: ${document.getElementById("product-tail").value}`,
+        "词分布占比",
+        `头部: ${document.getElementById("competitor-head").value}`,
+        `腰部: ${document.getElementById("competitor-middle").value}`,
+        `长尾: ${document.getElementById("competitor-tail").value}`,
+      ]);
+      data.push([""]);
+
+      data.push(["核心出单词"]);
+      data.push(["出单词", "自然位", "当前点击率", "当前转化率", "日期", "备注"]);
+      getTableData("core-words-table").forEach((row) => data.push(row));
+      data.push([""]);
+
+      data.push(["与竞品对比缺失词"]);
+      data.push(["关键词", "执行动作", "执行日期", "难度", "趋势", "备注"]);
+      getTableData("missing-words-table").forEach((row) => data.push(row));
+      data.push([""]);
+
+      data.push(["新打造词情况"]);
+      data.push(["关键词", "点击率", "转换率", "自然位", "备注"]);
+      getTableData("new-words-table").forEach((row) => data.push(row));
+
+      return data;
+    }
+
+    function exportExcel() {
+      const aoaData = buildSheetData();
+      const ws = XLSX.utils.aoa_to_sheet(aoaData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "广告日报");
+
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      const filename = `广告日报_${yyyy}-${mm}-${dd}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+    }
+
+    document.getElementById("export-btn").addEventListener("click", exportExcel);
+  </script>
+</body>
+</html>
