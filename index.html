@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>广告日报收集与导出</title>
+  <!-- xlsx-populate 浏览器版，用于基于模板写入并导出 Excel -->
+  <script src="https://unpkg.com/xlsx-populate/browser/xlsx-populate.min.js"></script>
+  <style>
+    :root {
+      --header-bg: #fcd9b3;
+      --subheader-bg: #fdeed9;
+      --label-bg: #c9e4ff;
+      --divider-bg: #e6eef7;
+      --metric-bg: #d5f4fa;
+      --table-border: #c7c7c7;
+      --row-alt: #f8fbff;
+      --accent: #f18f01;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Microsoft YaHei", Arial, sans-serif;
+      margin: 16px;
+      background: #f7f7f9;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      color: #444;
+    }
+
+    section {
+      background: #fff;
+      border: 1px solid var(--table-border);
+      padding: 16px;
+      margin-bottom: 18px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--header-bg);
+      border: 1px solid var(--table-border);
+      padding: 10px;
+      margin: -8px -8px 12px -8px;
+      font-weight: 700;
+      color: #5c3d1a;
+      letter-spacing: 1px;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--table-border);
+      padding: 8px;
+      text-align: center;
+      font-size: 14px;
+      word-break: break-all;
+    }
+
+    thead th {
+      background: var(--subheader-bg);
+      color: #444;
+      font-weight: 700;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: var(--row-alt);
+    }
+
+    .input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"] {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #d3d3d3;
+      border-radius: 4px;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    .suffix {
+      flex-shrink: 0;
+      color: #777;
+      font-size: 12px;
+    }
+
+    .tag-label {
+      background: var(--label-bg);
+      font-weight: 700;
+      color: #234;
+    }
+
+    .divider-cell {
+      background: var(--divider-bg);
+    }
+
+    .metric-label {
+      background: var(--metric-bg);
+      font-weight: 700;
+    }
+
+    .actions {
+      margin: 8px 0;
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+      transition: transform 0.05s ease, box-shadow 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    }
+
+    .danger-btn {
+      background: #d9534f;
+    }
+
+    .table-note {
+      margin-top: 6px;
+      color: #666;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>广告日报收集</h1>
+
+  <section id="ad-structure">
+    <div class="section-title">广告结构</div>
+    <table class="structure-table">
+      <thead>
+        <tr>
+          <th colspan="4">本品</th>
+          <th colspan="4">竞品</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="tag-label">本品</td>
+          <td><input type="date" id="product-start-date" /></td>
+          <td><input type="date" id="product-end-date" /></td>
+          <td class="divider-cell"></td>
+          <td class="tag-label">竞品名称</td>
+          <td><input type="text" id="competitor-name" placeholder="填写竞品名称" /></td>
+          <td><input type="date" id="competitor-start-date" /></td>
+          <td><input type="date" id="competitor-end-date" /></td>
+        </tr>
+        <tr>
+          <td class="metric-label">广告位流量占比</td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="product-sp" min="0" max="100" step="0.01" placeholder="SP" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="product-sb" min="0" max="100" step="0.01" placeholder="SB" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="product-sbv" min="0" max="100" step="0.01" placeholder="SBV" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+          <td class="metric-label">广告位流量占比</td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="competitor-sp" min="0" max="100" step="0.01" placeholder="SP" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="competitor-sb" min="0" max="100" step="0.01" placeholder="SB" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="competitor-sbv" min="0" max="100" step="0.01" placeholder="SBV" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="metric-label">词分布占比</td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="product-head" min="0" max="100" step="0.01" placeholder="头部" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="product-middle" min="0" max="100" step="0.01" placeholder="腰部" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="product-tail" min="0" max="100" step="0.01" placeholder="长尾" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+          <td class="metric-label">词分布占比</td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="competitor-head" min="0" max="100" step="0.01" placeholder="头部" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="competitor-middle" min="0" max="100" step="0.01" placeholder="腰部" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+          <td>
+            <div class="input-wrap">
+              <input type="number" id="competitor-tail" min="0" max="100" step="0.01" placeholder="长尾" />
+              <span class="suffix">%</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="table-note">日期默认当天，可直接点选日历；百分比无需输入“%”，导出时自动附加。</div>
+  </section>
+
+  <section id="core-words-section">
+    <div class="section-title">核心出单词</div>
+    <div class="actions">
+      <button type="button" id="add-core-row">新增一行</button>
+    </div>
+    <table id="core-words-table">
+      <thead>
+        <tr>
+          <th class="tag-label">出单词</th>
+          <th class="tag-label">自然位</th>
+          <th class="metric-label">当前点击率</th>
+          <th class="metric-label">当前转化率</th>
+          <th class="metric-label">日期</th>
+          <th class="metric-label">备注</th>
+          <th class="divider-cell">操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section id="missing-words-section">
+    <div class="section-title">与竞品对比缺失词</div>
+    <div class="actions">
+      <button type="button" id="add-missing-row">新增一行</button>
+    </div>
+    <table id="missing-words-table">
+      <thead>
+        <tr>
+          <th class="tag-label">关键词</th>
+          <th class="metric-label">执行动作</th>
+          <th class="metric-label">执行日期</th>
+          <th class="metric-label">难度</th>
+          <th class="metric-label">趋势</th>
+          <th class="metric-label">备注</th>
+          <th class="divider-cell">操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section id="new-words-section">
+    <div class="section-title">新打造词情况</div>
+    <div class="actions">
+      <button type="button" id="add-new-row">新增一行</button>
+    </div>
+    <table id="new-words-table">
+      <thead>
+        <tr>
+          <th class="tag-label">关键词</th>
+          <th class="metric-label">点击率</th>
+          <th class="metric-label">转换率</th>
+          <th class="tag-label">自然位</th>
+          <th class="metric-label">备注</th>
+          <th class="divider-cell">操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section>
+    <button type="button" id="export-btn">生成日报 Excel</button>
+  </section>
+
+  <script>
+    // --------------------------
+    // 工具：默认填充当天日期
+    // --------------------------
+    function setTodayDefaultDate(input) {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      input.value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    // --------------------------
+    // 工具：创建表格行
+    // --------------------------
+    function addTableRow(tbody, placeholders, isDateColumns = []) {
+      const tr = document.createElement("tr");
+      placeholders.forEach((placeholder, idx) => {
+        const td = document.createElement("td");
+        const input = document.createElement("input");
+        input.type = isDateColumns.includes(idx) ? "date" : "text";
+        input.placeholder = placeholder;
+        // 默认日期列填入今天，便于直接点击修改
+        if (input.type === "date") {
+          setTodayDefaultDate(input);
+        }
+        td.appendChild(input);
+        tr.appendChild(td);
+      });
+      const actionTd = document.createElement("td");
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "删除";
+      deleteBtn.type = "button";
+      deleteBtn.classList.add("danger-btn");
+      deleteBtn.addEventListener("click", () => tbody.removeChild(tr));
+      actionTd.appendChild(deleteBtn);
+      tr.appendChild(actionTd);
+      tbody.appendChild(tr);
+    }
+
+    function getTableData(tableId) {
+      const rows = [];
+      document.querySelectorAll(`#${tableId} tbody tr`).forEach((tr) => {
+        const values = Array.from(tr.querySelectorAll("td input")).map((input) => input.value.trim());
+        rows.push(values);
+      });
+      return rows;
+    }
+
+    document.getElementById("add-core-row").addEventListener("click", () => {
+      const tbody = document.querySelector("#core-words-table tbody");
+      addTableRow(tbody, ["出单词", "自然位", "当前点击率", "当前转化率", "日期", "备注"], [4]);
+    });
+
+    document.getElementById("add-missing-row").addEventListener("click", () => {
+      const tbody = document.querySelector("#missing-words-table tbody");
+      addTableRow(tbody, ["关键词", "执行动作", "执行日期", "难度", "趋势", "备注"], [2]);
+    });
+
+    document.getElementById("add-new-row").addEventListener("click", () => {
+      const tbody = document.querySelector("#new-words-table tbody");
+      addTableRow(tbody, ["关键词", "点击率", "转换率", "自然位", "备注"], []);
+    });
+
+    // 初始化每个表格一行
+    document.getElementById("add-core-row").click();
+    document.getElementById("add-missing-row").click();
+    document.getElementById("add-new-row").click();
+
+    // 初始化顶层日期为今天
+    ["product-start-date", "product-end-date", "competitor-start-date", "competitor-end-date"].forEach((id) => {
+      const input = document.getElementById(id);
+      setTodayDefaultDate(input);
+    });
+
+    // --------------------------
+    // 导出：读取模板并写入数据
+    // --------------------------
+    async function exportExcelWithTemplate() {
+      // 1) 拉取模板（确保根目录存在 PL-ad-report-template.xlsx，或替换为你的 CDN/Raw 地址）
+      const templateArrayBuffer = await fetch("PL-ad-report-template.xlsx").then((res) => res.arrayBuffer());
+
+      // 2) 打开模板工作簿
+      const workbook = await XlsxPopulate.fromDataAsync(templateArrayBuffer);
+      const sheet = workbook.sheet(0); // 模板默认只有一个 Sheet
+
+      // 3) 取表单数据
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      const filename = `广告日报_${yyyy}-${mm}-${dd}.xlsx`;
+
+      const productStart = document.getElementById("product-start-date").value;
+      const productEnd = document.getElementById("product-end-date").value;
+      const competitorName = document.getElementById("competitor-name").value;
+      const competitorStart = document.getElementById("competitor-start-date").value;
+      const competitorEnd = document.getElementById("competitor-end-date").value;
+
+      // 拼装百分比文本，自动带 %，并用换行符组合多行
+      const productPlacement = [
+        `SP: ${document.getElementById("product-sp").value}%`,
+        `SB: ${document.getElementById("product-sb").value}%`,
+        `SBV: ${document.getElementById("product-sbv").value}%`,
+      ].join("\n");
+      const productWords = [
+        `头部: ${document.getElementById("product-head").value}%`,
+        `腰部: ${document.getElementById("product-middle").value}%`,
+        `长尾: ${document.getElementById("product-tail").value}%`,
+      ].join("\n");
+      const competitorPlacement = [
+        `SP: ${document.getElementById("competitor-sp").value}%`,
+        `SB: ${document.getElementById("competitor-sb").value}%`,
+        `SBV: ${document.getElementById("competitor-sbv").value}%`,
+      ].join("\n");
+      const competitorWords = [
+        `头部: ${document.getElementById("competitor-head").value}%`,
+        `腰部: ${document.getElementById("competitor-middle").value}%`,
+        `长尾: ${document.getElementById("competitor-tail").value}%`,
+      ].join("\n");
+
+      // 4) 写入 A 区：广告结构
+      sheet.cell("B3").value(productStart);
+      sheet.cell("C3").value(productEnd);
+      sheet.cell("B4").value(productPlacement);
+      sheet.cell("B5").value(productWords);
+
+      sheet.cell("F2").value(competitorName);
+      sheet.cell("G3").value(competitorStart);
+      // 说明：根据需求同时写入日期2与广告位占比到 G4，采用换行合并，保持格式与内容
+      sheet.cell("G4").value([competitorEnd, competitorPlacement].filter(Boolean).join("\n"));
+      sheet.cell("G5").value(competitorWords);
+
+      // 5) 写入 B 区：核心出单词（从 A13 开始）
+      const coreRows = getTableData("core-words-table");
+      let coreStartRow = 13;
+      coreRows.forEach((row) => {
+        const [word, natural, clickRate, convertRate, date, note] = row;
+        sheet.cell(`A${coreStartRow}`).value(word);
+        sheet.cell(`B${coreStartRow}`).value(natural);
+        sheet.cell(`C${coreStartRow}`).value(clickRate ? `${clickRate}%` : "");
+        sheet.cell(`D${coreStartRow}`).value(convertRate ? `${convertRate}%` : "");
+        sheet.cell(`E${coreStartRow}`).value(date);
+        sheet.cell(`F${coreStartRow}`).value(note);
+        coreStartRow += 1;
+      });
+
+      // 6) 写入 C 区：与竞品对比缺失词（从 A21 开始）
+      const missingRows = getTableData("missing-words-table");
+      let missingStartRow = 21;
+      missingRows.forEach((row) => {
+        const [keyword, action, execDate, difficulty, trend, note] = row;
+        sheet.cell(`A${missingStartRow}`).value(keyword);
+        sheet.cell(`B${missingStartRow}`).value(action);
+        sheet.cell(`C${missingStartRow}`).value(execDate);
+        sheet.cell(`D${missingStartRow}`).value(difficulty);
+        sheet.cell(`E${missingStartRow}`).value(trend);
+        sheet.cell(`F${missingStartRow}`).value(note);
+        missingStartRow += 1;
+      });
+
+      // 7) 写入 D 区：新打造词情况（从 A31 开始）
+      const newRows = getTableData("new-words-table");
+      let newStartRow = 31;
+      newRows.forEach((row) => {
+        const [keyword, click, convert, natural, note] = row;
+        sheet.cell(`A${newStartRow}`).value(keyword);
+        sheet.cell(`B${newStartRow}`).value(click ? `${click}%` : "");
+        sheet.cell(`C${newStartRow}`).value(convert ? `${convert}%` : "");
+        sheet.cell(`D${newStartRow}`).value(natural);
+        sheet.cell(`E${newStartRow}`).value(note);
+        newStartRow += 1;
+      });
+
+      // 8) 生成 Blob 并触发下载，保留模板样式
+      const output = await workbook.outputAsync();
+      const blob = new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById("export-btn").addEventListener("click", exportExcelWithTemplate);
+  </script>
+</body>
+</html>
