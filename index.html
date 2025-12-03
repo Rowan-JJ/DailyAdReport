@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>广告日报收集与导出</title>
+  <!-- xlsx-populate 浏览器版，用于基于模板写入并导出 Excel -->
+  <script src="https://unpkg.com/xlsx-populate/browser/xlsx-populate.min.js"></script>
+  <style>
+    :root {
+      --bg: radial-gradient(circle at 10% 10%, #ffe1e1, #f2f6ff 30%, #e3f3ff 60%, #fdf3ff);
+      --card: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+      --accent: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);
+      --accent-2: linear-gradient(135deg, #7f7fd5, #86a8e7, #91eae4);
+      --border: #e6e9f2;
+      --shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+      --text-main: #1f2d3d;
+      --muted: #5f6c7b;
+      --pill: #f3f7ff;
+      --danger: #e74c3c;
+      --product-tint: linear-gradient(135deg, rgba(255, 210, 234, 0.65), rgba(255, 255, 255, 0.9));
+      --competitor-tint: linear-gradient(135deg, rgba(199, 231, 255, 0.6), rgba(255, 255, 255, 0.92));
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 18px;
+      background: var(--bg);
+      font-family: "Inter", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--text-main);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.5px;
+    }
+
+    p.lead {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      backdrop-filter: blur(4px);
+      animation: floatIn 0.4s ease;
+    }
+
+    .pill {
+      padding: 6px 12px;
+      background: var(--pill);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+      display: inline-block;
+      border: 1px solid var(--border);
+    }
+
+    .layout-two-col {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 14px;
+    }
+
+    .layout-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+      animation: floatIn 0.4s ease;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .section-title span {
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    .gradient-title {
+      background: var(--accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      font-size: 14px;
+      transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #86a8e7;
+      box-shadow: 0 0 0 3px rgba(134, 168, 231, 0.25);
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .input-tagged {
+      position: relative;
+      flex: 1;
+    }
+
+    .input-tagged input {
+      width: 100%;
+      padding-right: 90px;
+    }
+
+    .inline-hint {
+      position: absolute;
+      right: 38px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 12px;
+      color: var(--muted);
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
+      padding: 2px 6px;
+      border-radius: 10px;
+      pointer-events: none;
+      border: 1px dashed var(--border);
+    }
+
+    .input-group .suffix {
+      min-width: 34px;
+      padding: 10px;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: var(--pill);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      padding: 6px 8px;
+      text-align: center;
+      background: #fff;
+    }
+
+    th {
+      background: linear-gradient(135deg, #eef2ff, #f7f7ff);
+      color: #394867;
+      font-weight: 700;
+    }
+
+    .cell-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      justify-content: center;
+    }
+
+    .cell-group input {
+      flex: 1;
+    }
+
+    .cell-suffix {
+      min-width: 30px;
+      padding: 6px 8px;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      background: var(--pill);
+      color: var(--muted);
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    tbody tr:nth-child(odd) td {
+      background: #fbfcff;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      background: var(--accent-2);
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.14);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+
+    .danger {
+      background: linear-gradient(135deg, #ff7f7f, #e63946);
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .flex-between {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 10px;
+    }
+
+    .export-bar {
+      position: sticky;
+      bottom: 0;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(6px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      text-align: right;
+    }
+
+    .subcard-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    .auto-note {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .product-card {
+      background: var(--product-tint);
+    }
+
+    .competitor-card {
+      background: var(--competitor-tint);
+    }
+
+    .receive-anim {
+      animation: slideFill 0.5s ease;
+    }
+
+    .fade-anim {
+      animation: fadeClear 0.45s ease;
+    }
+
+    @keyframes slideFill {
+      from {
+        box-shadow: 0 0 0 rgba(134, 168, 231, 0.4);
+        transform: translateX(10px);
+      }
+      to {
+        box-shadow: 0 0 0 8px rgba(134, 168, 231, 0);
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes fadeClear {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0.25;
+      }
+    }
+
+    @keyframes floatIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div>
+      <div class="pill">广告日报 · 扁平渐变风</div>
+      <h1 class="gradient-title">收集数据 & 导出到模板</h1>
+      <p class="lead">过去在左（最近的周三/周五），当前在右（当天），可随时编辑。</p>
+      <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button type="button" id="new-report-btn" style="background:var(--accent);">新的日报</button>
+      </div>
+    </div>
+    <div style="text-align:right;min-width:200px;">
+      <label for="spu">SPU / ASIN</label>
+      <input type="text" id="spu" placeholder="输入 SPU/ASIN" />
+    </div>
+  </div>
+
+  <section>
+    <div class="section-title">
+      <span>基础时间与竞品信息</span>
+      <span class="muted">当前 = 今日；过去 = 最近的周三或周五</span>
+    </div>
+    <div class="layout-two-col">
+      <div class="card product-card">
+        <div class="subcard-title">过去</div>
+        <label for="time1-date">日期</label>
+        <input type="date" id="time1-date" />
+        <div style="margin-top:8px;">
+          <label for="competitor-name">竞品名称 / 标题</label>
+          <input type="text" id="competitor-name" placeholder="如：竞品 ASIN" />
+        </div>
+      </div>
+      <div class="card competitor-card">
+        <div class="subcard-title">当前</div>
+        <label for="time2-date">日期</label>
+        <input type="date" id="time2-date" />
+        <div style="margin-top:8px;">
+          <label class="muted">（竞品名称复用左侧填写内容）</label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">
+      <span class="gradient-title">广告结构（左：过去，右：当前）</span>
+      <span class="auto-note">输入任意两项，剩余自动补足 100%</span>
+    </div>
+    <div class="layout-two-col">
+      <div class="card product-card">
+        <div class="subcard-title">过去 · 本品</div>
+        <div class="grid-2">
+          <div>
+            <label>广告位流量占比</label>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-product-sp" placeholder="SP" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SP</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-product-sb" placeholder="SB" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SB</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-product-sbv" placeholder="SBV" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SBV</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+          </div>
+          <div>
+            <label>词分布占比</label>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-product-head" placeholder="头部" min="0" max="100" step="0.01" />
+                <span class="inline-hint">头部</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-product-middle" placeholder="腰部" min="0" max="100" step="0.01" />
+                <span class="inline-hint">腰部</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-product-tail" placeholder="长尾" min="0" max="100" step="0.01" />
+                <span class="inline-hint">长尾</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+          </div>
+        </div>
+        <hr style="border:none;border-top:1px dashed var(--border);margin:12px 0;" />
+        <div class="subcard-title">过去 · 竞品</div>
+        <div class="grid-2">
+          <div>
+            <label>广告位流量占比</label>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-competitor-sp" placeholder="SP" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SP</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-competitor-sb" placeholder="SB" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SB</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-competitor-sbv" placeholder="SBV" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SBV</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+          </div>
+          <div>
+            <label>词分布占比</label>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-competitor-head" placeholder="头部" min="0" max="100" step="0.01" />
+                <span class="inline-hint">头部</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-competitor-middle" placeholder="腰部" min="0" max="100" step="0.01" />
+                <span class="inline-hint">腰部</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t1-competitor-tail" placeholder="长尾" min="0" max="100" step="0.01" />
+                <span class="inline-hint">长尾</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card competitor-card">
+        <div class="subcard-title">当前 · 本品</div>
+        <div class="grid-2">
+          <div>
+            <label>广告位流量占比</label>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-product-sp" placeholder="SP" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SP</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-product-sb" placeholder="SB" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SB</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-product-sbv" placeholder="SBV" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SBV</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+          </div>
+          <div>
+            <label>词分布占比</label>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-product-head" placeholder="头部" min="0" max="100" step="0.01" />
+                <span class="inline-hint">头部</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-product-middle" placeholder="腰部" min="0" max="100" step="0.01" />
+                <span class="inline-hint">腰部</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-product-tail" placeholder="长尾" min="0" max="100" step="0.01" />
+                <span class="inline-hint">长尾</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+          </div>
+        </div>
+        <hr style="border:none;border-top:1px dashed var(--border);margin:12px 0;" />
+        <div class="subcard-title">当前 · 竞品</div>
+        <div class="grid-2">
+          <div>
+            <label>广告位流量占比</label>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-competitor-sp" placeholder="SP" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SP</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-competitor-sb" placeholder="SB" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SB</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-competitor-sbv" placeholder="SBV" min="0" max="100" step="0.01" />
+                <span class="inline-hint">SBV</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+          </div>
+          <div>
+            <label>词分布占比</label>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-competitor-head" placeholder="头部" min="0" max="100" step="0.01" />
+                <span class="inline-hint">头部</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-competitor-middle" placeholder="腰部" min="0" max="100" step="0.01" />
+                <span class="inline-hint">腰部</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+            <div class="input-group">
+              <div class="input-tagged">
+                <input type="number" id="t2-competitor-tail" placeholder="长尾" min="0" max="100" step="0.01" />
+                <span class="inline-hint">长尾</span>
+              </div>
+              <span class="suffix">%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">
+      <span class="gradient-title">核心出单词（固定 3 条，过去/当前同词对比）</span>
+    </div>
+    <div class="layout-stack">
+      <div class="card product-card">
+        <div class="subcard-title">本品 · 过去 vs 当前</div>
+        <table id="product-core">
+          <thead>
+            <tr>
+              <th rowspan="2">出单词</th>
+              <th colspan="3">过去</th>
+              <th colspan="3">当前</th>
+            </tr>
+            <tr>
+              <th>自然位</th>
+              <th>点击率</th>
+              <th>转化率</th>
+              <th>自然位</th>
+              <th>点击率</th>
+              <th>转化率</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card competitor-card">
+        <div class="subcard-title">竞品 · 过去 vs 当前</div>
+        <table id="competitor-core">
+          <thead>
+            <tr>
+              <th rowspan="2">出单词</th>
+              <th>过去</th>
+              <th>当前</th>
+            </tr>
+            <tr>
+              <th>自然位</th>
+              <th>自然位</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">
+      <span class="gradient-title">与竞品对比缺失词（1~3 条）</span>
+      <div class="flex-between" style="gap:6px;">
+        <button type="button" id="add-missing">新增一行</button>
+        <button type="button" id="remove-missing" class="danger">删除一行</button>
+      </div>
+    </div>
+    <table id="missing-table">
+      <thead>
+        <tr>
+          <th>关键词</th>
+          <th>执行动作</th>
+          <th>执行日期</th>
+          <th>难度</th>
+          <th>趋势</th>
+          <th>备注</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="section-title">
+      <span class="gradient-title">新打造词情况（1~3 条）</span>
+      <div class="flex-between" style="gap:6px;">
+        <button type="button" id="add-new">新增一行</button>
+        <button type="button" id="remove-new" class="danger">删除一行</button>
+      </div>
+    </div>
+    <table id="new-table">
+      <thead>
+        <tr>
+          <th rowspan="2">关键词</th>
+          <th colspan="3">过去</th>
+          <th colspan="3">当前</th>
+          <th rowspan="2">备注</th>
+        </tr>
+        <tr>
+          <th>点击率</th>
+          <th>转化率</th>
+          <th>自然位</th>
+          <th>点击率</th>
+          <th>转化率</th>
+          <th>自然位</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <div class="export-bar">
+    <div class="flex-between">
+      <div class="muted">导出保留模板样式，文件名自动包含当天日期</div>
+      <button type="button" id="export-btn">生成日报 Excel</button>
+    </div>
+  </div>
+
+  <script>
+    // -----------------------------
+    // 日期：当前为今天，过去为最近的周三/周五
+    // -----------------------------
+    function formatDate(date) {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function formatDateNoYear(dateStr) {
+      if (!dateStr) return "";
+      const parts = dateStr.split("-");
+      if (parts.length < 3) return dateStr;
+      return `${parts[1]}-${parts[2]}`;
+    }
+
+    function getDefaultDates() {
+      const today = new Date();
+      const time2 = formatDate(today);
+      const dow = today.getDay();
+      // 0=Sun..6=Sat; target Wed(3) or Fri(5), choose最近且不晚于今天
+      const offsets = [3, 5]
+        .map((target) => {
+          const diff = (dow - target + 7) % 7;
+          return diff === 0 ? 0 : diff;
+        })
+        .filter((d) => d >= 0);
+      const minDiff = Math.min(...offsets);
+      const time1Date = new Date(today);
+      time1Date.setDate(today.getDate() - minDiff);
+      const time1 = formatDate(time1Date);
+      return { time1, time2 };
+    }
+
+    const { time1, time2 } = getDefaultDates();
+    document.getElementById("time1-date").value = time1;
+    document.getElementById("time2-date").value = time2;
+
+    function applyTransferEffect(fromEl, toEl) {
+      if (toEl) {
+        toEl.classList.add("receive-anim");
+        setTimeout(() => toEl.classList.remove("receive-anim"), 520);
+      }
+      if (fromEl) {
+        fromEl.classList.add("fade-anim");
+        setTimeout(() => fromEl.classList.remove("fade-anim"), 460);
+      }
+    }
+
+    // -----------------------------
+    // 工具：填充固定行表格
+    // -----------------------------
+    function buildFixedRows(tbody, rows, placeholders) {
+      tbody.innerHTML = "";
+      for (let i = 0; i < rows; i += 1) {
+        const tr = document.createElement("tr");
+        placeholders.forEach((ph) => {
+          const td = document.createElement("td");
+          const input = document.createElement("input");
+          input.type = ph.includes("%") ? "number" : "text";
+          if (input.type === "number") {
+            input.min = 0;
+            input.max = 100;
+            input.step = 0.01;
+          }
+          input.placeholder = ph;
+          if (ph.includes("%")) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "cell-group";
+            const suffix = document.createElement("span");
+            suffix.className = "cell-suffix";
+            suffix.textContent = "%";
+            wrapper.appendChild(input);
+            wrapper.appendChild(suffix);
+            td.appendChild(wrapper);
+          } else {
+            td.appendChild(input);
+          }
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      }
+    }
+
+    buildFixedRows(document.querySelector("#product-core tbody"), 3, [
+      "出单词",
+      "自然位",
+      "点击率 %",
+      "转化率 %",
+      "自然位",
+      "点击率 %",
+      "转化率 %",
+    ]);
+    buildFixedRows(document.querySelector("#competitor-core tbody"), 3, ["出单词", "自然位", "自然位"]);
+
+    // 缺失词 & 新词：1~3 行
+    function addRow(tableId, placeholders) {
+      const tbody = document.querySelector(`#${tableId} tbody`);
+      if (tbody.children.length >= 3) return;
+      const tr = document.createElement("tr");
+      placeholders.forEach((ph) => {
+        const td = document.createElement("td");
+        if (ph === "难度") {
+          const select = document.createElement("select");
+          ["", "超难", "困难", "中等", "简单"].forEach((opt) => {
+            const option = document.createElement("option");
+            option.value = opt;
+            option.textContent = opt || "选择难度";
+            select.appendChild(option);
+          });
+          td.appendChild(select);
+        } else {
+          const input = document.createElement("input");
+          if (ph.includes("日期")) {
+            input.type = "date";
+            input.value = time2;
+          } else if (ph.includes("%")) {
+            input.type = "number";
+            input.min = 0;
+            input.max = 100;
+            input.step = 0.01;
+          } else {
+            input.type = "text";
+          }
+          input.placeholder = ph;
+          if (ph.includes("%")) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "cell-group";
+            const suffix = document.createElement("span");
+            suffix.className = "cell-suffix";
+            suffix.textContent = "%";
+            wrapper.appendChild(input);
+            wrapper.appendChild(suffix);
+            td.appendChild(wrapper);
+          } else {
+            td.appendChild(input);
+          }
+        }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+      return tr;
+    }
+
+    function removeRow(tableId) {
+      const tbody = document.querySelector(`#${tableId} tbody`);
+      if (tbody.children.length > 1) {
+        tbody.removeChild(tbody.lastElementChild);
+      }
+    }
+
+    addRow("missing-table", ["关键词", "执行动作", "执行日期", "难度", "趋势", "备注"]);
+    addRow("new-table", ["关键词", "点击率(过去) %", "转化率(过去) %", "自然位(过去)", "点击率(当前) %", "转化率(当前) %", "自然位(当前)", "备注"]);
+
+    document.getElementById("add-missing").addEventListener("click", () => addRow("missing-table", ["关键词", "执行动作", "执行日期", "难度", "趋势", "备注"]));
+    document.getElementById("remove-missing").addEventListener("click", () => removeRow("missing-table"));
+    document.getElementById("add-new").addEventListener("click", () => addRow("new-table", ["关键词", "点击率(过去) %", "转化率(过去) %", "自然位(过去)", "点击率(当前) %", "转化率(当前) %", "自然位(当前)", "备注"]));
+    document.getElementById("remove-new").addEventListener("click", () => removeRow("new-table"));
+
+    // -----------------------------
+    // 自动补全百分比（输入任意两项求和=100）
+    // -----------------------------
+    function attachAutoPercent(ids) {
+      const inputs = ids.map((id) => document.getElementById(id));
+      inputs.forEach((input) => {
+        input.addEventListener("input", () => {
+          delete input.dataset.autoFilled;
+          const values = inputs.map((el) => (el.value === "" ? null : parseFloat(el.value)));
+          const filledCount = values.filter((v) => Number.isFinite(v)).length;
+          const emptyIndex = values.findIndex((v) => !Number.isFinite(v));
+          const autoIndex = inputs.findIndex((el) => el.dataset.autoFilled === "true");
+
+          if (filledCount >= 2 && emptyIndex !== -1) {
+            const sum = values.reduce((acc, v) => acc + (Number.isFinite(v) ? v : 0), 0);
+            const remaining = 100 - sum;
+            inputs[emptyIndex].value = Number.isFinite(remaining) ? remaining.toFixed(2) : "";
+            inputs[emptyIndex].dataset.autoFilled = "true";
+          } else if (filledCount === 3 && autoIndex !== -1) {
+            const otherIdx = [0, 1, 2].filter((i) => i !== autoIndex && Number.isFinite(values[i]));
+            if (otherIdx.length === 2) {
+              const remaining = 100 - values[otherIdx[0]] - values[otherIdx[1]];
+              inputs[autoIndex].value = Number.isFinite(remaining) ? remaining.toFixed(2) : "";
+              inputs[autoIndex].dataset.autoFilled = "true";
+            }
+          }
+        });
+      });
+    }
+
+    [
+      ["t1-product-sp", "t1-product-sb", "t1-product-sbv"],
+      ["t1-product-head", "t1-product-middle", "t1-product-tail"],
+      ["t1-competitor-sp", "t1-competitor-sb", "t1-competitor-sbv"],
+      ["t1-competitor-head", "t1-competitor-middle", "t1-competitor-tail"],
+      ["t2-product-sp", "t2-product-sb", "t2-product-sbv"],
+      ["t2-product-head", "t2-product-middle", "t2-product-tail"],
+      ["t2-competitor-sp", "t2-competitor-sb", "t2-competitor-sbv"],
+      ["t2-competitor-head", "t2-competitor-middle", "t2-competitor-tail"],
+    ].forEach(attachAutoPercent);
+
+    // -----------------------------
+    // 新的日报：将“当前”内容迁移到“过去”，并清空当前
+    // -----------------------------
+    function transferPair(pastId, currentId, options = {}) {
+      const past = document.getElementById(pastId);
+      const current = document.getElementById(currentId);
+      if (!past || !current) return;
+      past.value = current.value;
+      applyTransferEffect(current, past);
+      delete past.dataset.autoFilled;
+      delete current.dataset.autoFilled;
+      if (options.resetCurrentToToday) {
+        current.value = formatDate(new Date());
+      } else {
+        current.value = "";
+      }
+      past.dispatchEvent(new Event("input"));
+      current.dispatchEvent(new Event("input"));
+    }
+
+    function shiftCoreTables() {
+      document.querySelectorAll("#product-core tbody tr").forEach((tr) => {
+        const inputs = tr.querySelectorAll("input");
+        if (inputs.length < 7) return;
+        const [word, natPast, clickPast, convertPast, natCurrent, clickCurrent, convertCurrent] = inputs;
+        natPast.value = natCurrent.value;
+        clickPast.value = clickCurrent.value;
+        convertPast.value = convertCurrent.value;
+        applyTransferEffect(natCurrent, natPast);
+        applyTransferEffect(clickCurrent, clickPast);
+        applyTransferEffect(convertCurrent, convertPast);
+        natCurrent.value = "";
+        clickCurrent.value = "";
+        convertCurrent.value = "";
+      });
+
+      document.querySelectorAll("#competitor-core tbody tr").forEach((tr) => {
+        const inputs = tr.querySelectorAll("input");
+        if (inputs.length < 3) return;
+        const [word, natPast, natCurrent] = inputs;
+        natPast.value = natCurrent.value;
+        applyTransferEffect(natCurrent, natPast);
+        natCurrent.value = "";
+      });
+    }
+
+    function shiftNewKeywordRows() {
+      document.querySelectorAll("#new-table tbody tr").forEach((tr) => {
+        const inputs = tr.querySelectorAll("input, select");
+        if (inputs.length < 8) return;
+        const [keyword, clickPast, convPast, natPast, clickCurrent, convCurrent, natCurrent, note] = inputs;
+        clickPast.value = clickCurrent.value;
+        convPast.value = convCurrent.value;
+        natPast.value = natCurrent.value;
+        applyTransferEffect(clickCurrent, clickPast);
+        applyTransferEffect(convCurrent, convPast);
+        applyTransferEffect(natCurrent, natPast);
+        clickCurrent.value = "";
+        convCurrent.value = "";
+        natCurrent.value = "";
+      });
+    }
+
+    function handleNewReport() {
+      transferPair("time1-date", "time2-date", { resetCurrentToToday: true });
+
+      [
+        ["t1-product-sp", "t2-product-sp"],
+        ["t1-product-sb", "t2-product-sb"],
+        ["t1-product-sbv", "t2-product-sbv"],
+        ["t1-product-head", "t2-product-head"],
+        ["t1-product-middle", "t2-product-middle"],
+        ["t1-product-tail", "t2-product-tail"],
+        ["t1-competitor-sp", "t2-competitor-sp"],
+        ["t1-competitor-sb", "t2-competitor-sb"],
+        ["t1-competitor-sbv", "t2-competitor-sbv"],
+        ["t1-competitor-head", "t2-competitor-head"],
+        ["t1-competitor-middle", "t2-competitor-middle"],
+        ["t1-competitor-tail", "t2-competitor-tail"],
+      ].forEach(([past, current]) => transferPair(past, current));
+
+      shiftCoreTables();
+      shiftNewKeywordRows();
+    }
+
+    document.getElementById("new-report-btn").addEventListener("click", handleNewReport);
+
+    // -----------------------------
+    // 数据采集工具
+    // -----------------------------
+    function collectTable(tableId) {
+      const rows = [];
+      document.querySelectorAll(`#${tableId} tbody tr`).forEach((tr) => {
+        const values = Array.from(tr.querySelectorAll("input, select")).map((el) => {
+          if (el.tagName === "SELECT") return el.value;
+          return el.value.trim();
+        });
+        rows.push(values);
+      });
+      return rows;
+    }
+
+    function formatPlacement(sp, sb, sbv) {
+      return [`SP: ${sp || ""}%`, `SB: ${sb || ""}%`, `SBV: ${sbv || ""}%`].join("\n");
+    }
+
+    function formatWords(head, middle, tail) {
+      return [`头部: ${head || ""}%`, `腰部: ${middle || ""}%`, `长尾: ${tail || ""}%`].join("\n");
+    }
+
+    // -----------------------------
+    // 导出：读取模板并写入映射单元格
+    // -----------------------------
+    async function exportExcelWithTemplate() {
+      try {
+        const response = await fetch("PL-ad-report-template.xlsx");
+        if (!response.ok) {
+          throw new Error("模板文件未找到或无法加载");
+        }
+        const templateArrayBuffer = await response.arrayBuffer();
+        const workbook = await XlsxPopulate.fromDataAsync(templateArrayBuffer);
+        const sheet = workbook.sheet(0);
+
+      const today = new Date();
+      const filename = `广告日报_${formatDate(today)}.xlsx`;
+
+      const time1Date = document.getElementById("time1-date").value;
+      const time2Date = document.getElementById("time2-date").value;
+      const time1Display = formatDateNoYear(time1Date);
+      const time2Display = formatDateNoYear(time2Date);
+      const competitorName = document.getElementById("competitor-name").value;
+      const spu = document.getElementById("spu").value;
+
+      // 基础信息
+      sheet.cell("E1").value(spu);
+      sheet.cell("F2").value(competitorName);
+
+      // 日期映射
+      ["B4", "G4", "E10", "E11", "E12", "H10", "H11", "H12", "B22"].forEach((addr) => sheet.cell(addr).value(time1Display));
+      ["C4", "H4", "E13", "E14", "E15", "H13", "H14", "H15", "E22"].forEach((addr) => sheet.cell(addr).value(time2Display));
+
+      // 广告位与词分布
+      sheet.cell("B5").value(formatPlacement(
+        document.getElementById("t1-product-sp").value,
+        document.getElementById("t1-product-sb").value,
+        document.getElementById("t1-product-sbv").value
+      ));
+      sheet.cell("G5").value(formatPlacement(
+        document.getElementById("t1-competitor-sp").value,
+        document.getElementById("t1-competitor-sb").value,
+        document.getElementById("t1-competitor-sbv").value
+      ));
+      sheet.cell("B6").value(formatWords(
+        document.getElementById("t1-product-head").value,
+        document.getElementById("t1-product-middle").value,
+        document.getElementById("t1-product-tail").value
+      ));
+      sheet.cell("G6").value(formatWords(
+        document.getElementById("t1-competitor-head").value,
+        document.getElementById("t1-competitor-middle").value,
+        document.getElementById("t1-competitor-tail").value
+      ));
+
+      sheet.cell("C5").value(formatPlacement(
+        document.getElementById("t2-product-sp").value,
+        document.getElementById("t2-product-sb").value,
+        document.getElementById("t2-product-sbv").value
+      ));
+      sheet.cell("H5").value(formatPlacement(
+        document.getElementById("t2-competitor-sp").value,
+        document.getElementById("t2-competitor-sb").value,
+        document.getElementById("t2-competitor-sbv").value
+      ));
+      sheet.cell("C6").value(formatWords(
+        document.getElementById("t2-product-head").value,
+        document.getElementById("t2-product-middle").value,
+        document.getElementById("t2-product-tail").value
+      ));
+      sheet.cell("H6").value(formatWords(
+        document.getElementById("t2-competitor-head").value,
+        document.getElementById("t2-competitor-middle").value,
+        document.getElementById("t2-competitor-tail").value
+      ));
+
+      // 核心出单词：固定 3 条
+      const productCore = collectTable("product-core");
+      const competitorCore = collectTable("competitor-core");
+
+      productCore.slice(0, 3).forEach((row, idx) => {
+        const basePast = 10 + idx;
+        const baseCurrent = 13 + idx;
+        const [word, natPast, clickPast, convertPast, natCurrent, clickCurrent, convertCurrent] = row;
+        sheet.cell(`A${basePast}`).value(word);
+        sheet.cell(`B${basePast}`).value(natPast);
+        sheet.cell(`C${basePast}`).value(clickPast ? `${clickPast}%` : "");
+        sheet.cell(`D${basePast}`).value(convertPast ? `${convertPast}%` : "");
+
+        sheet.cell(`A${baseCurrent}`).value(word);
+        sheet.cell(`B${baseCurrent}`).value(natCurrent);
+        sheet.cell(`C${baseCurrent}`).value(clickCurrent ? `${clickCurrent}%` : "");
+        sheet.cell(`D${baseCurrent}`).value(convertCurrent ? `${convertCurrent}%` : "");
+      });
+
+      competitorCore.slice(0, 3).forEach((row, idx) => {
+        const basePast = 10 + idx;
+        const baseCurrent = 13 + idx;
+        const [word, natPast, natCurrent] = row;
+        sheet.cell(`F${basePast}`).value(word);
+        sheet.cell(`G${basePast}`).value(natPast);
+        sheet.cell(`F${baseCurrent}`).value(word);
+        sheet.cell(`G${baseCurrent}`).value(natCurrent);
+      });
+
+      // 缺失词：1~3 行，从 A18 开始
+      const missing = collectTable("missing-table");
+      missing.slice(0, 3).forEach((row, idx) => {
+        const base = 18 + idx;
+        const [keyword, action, execDate, difficulty, trend, note] = row;
+        sheet.cell(`A${base}`).value(keyword);
+        sheet.cell(`B${base}`).value(action);
+        sheet.cell(`C${base}`).value(formatDateNoYear(execDate));
+        sheet.cell(`D${base}`).value(difficulty);
+        sheet.cell(`E${base}`).value(trend);
+        sheet.cell(`F${base}`).value(note);
+      });
+
+      // 新打造词：左列过去，右列当前（同一关键词成对出现）
+      const newRows = collectTable("new-table");
+      newRows.slice(0, 3).forEach((row, idx) => {
+        const base = 24 + idx;
+        const [keyword, c1, r1, nat1, c2, r2, nat2, note] = row;
+        sheet.cell(`A${base}`).value(keyword);
+        sheet.cell(`B${base}`).value(c1 ? `${c1}%` : "");
+        sheet.cell(`C${base}`).value(r1 ? `${r1}%` : "");
+        sheet.cell(`D${base}`).value(nat1);
+        sheet.cell(`E${base}`).value(c2 ? `${c2}%` : "");
+        sheet.cell(`F${base}`).value(r2 ? `${r2}%` : "");
+        sheet.cell(`G${base}`).value(nat2);
+        sheet.cell(`H${base}`).value(note);
+      });
+
+        const output = await workbook.outputAsync();
+        const blob = new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("导出失败", err);
+        alert("生成失败：请确认模板文件存在且可访问，稍后再试。");
+      }
+    }
+
+    document.getElementById("export-btn").addEventListener("click", exportExcelWithTemplate);
+  </script>
+</body>
+</html>
